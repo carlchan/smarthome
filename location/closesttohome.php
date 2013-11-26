@@ -1,5 +1,7 @@
 #!/usr/bin/php
 <?PHP
+///////////////////////
+// Locates iPhone(s) and returns estimated distance away from home of the closest phone in minutes of driving time
 //////////////////////
 $auth = array();
 $auth['USERNAME'] = array(
