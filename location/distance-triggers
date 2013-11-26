@@ -1,0 +1,61 @@
+#!/bin/bash
+
+logfile='/var/log/distance-triggers.log'
+
+if [ -e '/tmp/distance.ini' ]; then
+	. /tmp/distance.ini
+else
+	/usr/local/bin/distance-checker
+	. /tmp/distance.ini
+fi
+
+time=$(date +%k%M)
+
+function status {
+	echo Closest to home: $distance
+	echo
+	echo Security camera: $(/usr/local/bin/pdu 192.168.255.202 8 status)
+	echo Christmas Tree: $(/usr/local/bin/pdu 192.168.255.202 8 status)
+	echo
+}
+
+function securitycam {
+	#Threshold for activating home security camera
+	cameratime=1
+
+	if [ "$distance" -gt "$cameratime" ]; then
+		/usr/local/bin/pdu 192.168.255.202 1 on
+	else
+		#turn on camera if we're sleeping
+		if [[ "$time" -ge 0030 ]] && [[ "$time" -le 0700 ]]; then
+			/usr/local/bin/pdu 192.168.255.202 1 on
+		else
+			/usr/local/bin/pdu 192.168.255.202 1 off
+		fi
+	fi
+}
+
+function xmastree {
+	if [ "$distance" -ge "5" ]; then
+		/usr/local/bin/pdu 192.168.255.202 8 off
+	else
+	#only turn on if we're home and not during "sleep" hours
+		if [[ "$time" -ge 2315 ]] || [[ "$time" -le 0700 ]]; then
+	                /usr/local/bin/pdu 192.168.255.202 8 off
+	        else
+	                /usr/local/bin/pdu 192.168.255.202 8 on
+	        fi
+	fi
+}
+
+###############
+if [ "$1" == "status" ]; then
+	status
+else
+#	echo $(date) >> $logfile
+	securitycam
+	xmastree
+#	echo ---------------------- >> $logfile
+fi
+
+exit 0
