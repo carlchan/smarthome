@@ -1,4 +1,7 @@
 #!/bin/bash
+// Automatically trigger a location update only as frequently as needed due to excess
+// battery drain if checks occur too frequently
+
 minchecktime=15
 
 function getdistance {
@@ -14,8 +17,8 @@ echo distance=$distance > /tmp/distance.ini
 if [ "$distance" -le 1 ]; then
 	echo $0 | at now + $minchecktime min
 #check frequently if we're close to home
-elif [ "$distance" -lt 5 ]; then
-	echo $0 | at now + $minchecktime min
+#elif [ "$distance" -lt 5 ]; then
+#	echo $0 | at now + $minchecktime min
 #else check only as frequently as necessary
 else
         #take estimated time away and check within 80% of that length
