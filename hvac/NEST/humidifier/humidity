@@ -1,0 +1,24 @@
+#!/bin/bash
+statusini='/tmp/hvac-status.ini'
+
+if [ -e "$statusini" ]; then
+	if [ $(( (`date +%s` - `stat -L --format %Y $statusini`) > (15*60) )) -eq 0 ]; then
+		. $statusini
+	else
+		echo HVAC Status INI out of date.
+		exit 255
+	fi
+else
+	echo HVAC Status INI not found.
+	exit 255
+fi
+
+if [ "$hum_enabled" != 1 ]; then
+	exit 0
+fi
+
+case $1 in
+  auto )	/usr/local/bin/nest-humidity.php auto >> /dev/null
+		;;
+  * )		exit 1;;
+esac

@@ -1,0 +1,24 @@
+#!/bin/bash
+statusini='/tmp/hvac-status.ini'
+
+if [ -e "$statusini" ]; then
+	if [ $(( (`date +%s` - `stat -L --format %Y $statusini`) > (15*60) )) -eq 0 ]; then
+		. $statusini
+	else
+		echo HVAC Status INI out of date.
+		exit 255
+	fi
+else
+	echo HVAC Status INI not found.
+	exit 255
+fi
+
+if [ "$away" == "1" ]; then
+	/usr/local/bin/nest-everydayfan.php off
+else
+	if [ "$hrv" == "Off" ]; then
+		/usr/local/bin/nest-everydayfan.php on
+	else
+		/usr/local/bin/nest-everydayfan.php off
+	fi
+fi

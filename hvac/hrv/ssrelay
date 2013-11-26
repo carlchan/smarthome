@@ -1,0 +1,84 @@
+#!/usr/bin/python
+import sys
+import RPi.GPIO as GPIO
+from time import sleep, strftime, localtime
+from optparse import OptionParser
+
+#init
+#Only three pins hooked up, which 3?
+gpiorelays = [11,13,15]
+GPIO.setmode(GPIO.BOARD)
+GPIO.setwarnings(False)
+
+#####################
+#GPIO -> Relay relationship is inverse, 0=Relay ON, 1=Relay OFF
+#####################
+
+def init():
+    for gpio in gpiorelays:
+        GPIO.setup(gpio,GPIO.OUT)
+        state=(GPIO.input(gpio))
+        GPIO.output(gpio,(state))
+
+def cleanup():
+#turns OFF all relays
+    for gpio in gpiorelays:
+        GPIO.output(gpio,1)
+    GPIO.cleanup()
+
+def toggle(relay):
+    gpio=(gpiorelays[relay])
+    state=(GPIO.input(gpio))
+    GPIO.output(gpio,(not state))
+#Force a slight delay so relays won't cycle too quickly
+    sleep(0.5)
+
+def set(relay,state):
+    off=[ 'on', 'true', '1' ]
+    on=[ 'off', 'false', '0' ]
+    state=state.lower()
+    if not ((state in on) or (state in off)):
+        parser.error("Invalid state")
+    state=state in on
+    gpio=(gpiorelays[relay])
+    GPIO.output(gpio,state)
+    sleep(0.5)
+
+def get(relay):
+    gpio=(gpiorelays[relay])
+    state=(GPIO.input(gpio))    
+    state=not state
+    print ("Off", "On")[state]
+
+###########################
+parser = OptionParser()
+parser.add_option("-r", "--relay", type="int", dest="relay", help="Relay number")
+parser.add_option("-s", "--set", dest="state", help="Set relay state on/off")
+parser.add_option("-t", "--toggle", dest="toggle", action="store_true", help="Toggle relay")
+parser.add_option("--reset", action="store_true", dest="cleanup", default=False, help="Reset Relay board")
+
+(options, args) = parser.parse_args()
+
+if options.cleanup:
+    init()
+    cleanup()
+    print "Relays reset"
+    sys.exit(0)
+
+if options.relay is None:
+    parser.print_help()
+    exit(-1)
+
+if options.state and options.toggle:
+    parser.error("Cannot both explicityly set state and toggle simultaneously")
+
+if not 0 <= options.relay < len(gpiorelays):
+    parser.error("Invalid relay number")
+
+init()
+if options.toggle:
+    toggle(options.relay)
+elif options.state:
+    set(options.relay, options.state)
+else:
+    get(options.relay)

@@ -1,0 +1,42 @@
+#!/bin/bash
+statusini='/tmp/hvac-status.ini'
+
+if [ -e "$statusini" ]; then
+	if [ $(( (`date +%s` - `stat -L --format %Y $statusini`) > (15*60) )) -eq 0 ]; then
+		. $statusini
+	else
+		echo HVAC Status INI out of date.
+		exit 255
+	fi
+else
+	echo HVAC Status INI not found.
+	exit 255
+fi
+
+if [ -z "$current_mode" ]; then
+	echo `date` - Mode error >> /var/log/nestmode.log
+	exit 255
+fi
+
+case $1 in
+  auto )
+	if [ "$away" != "1" ]; then
+		if [ "$current_mode" != "off" ]; then
+			#round external temp to integer
+			ext_temp_int=$(echo "($ext_temp+0.5)/1" |bc)
+			if [ "$ext_temp_int" -gt "21" ]; then
+				nest-setmode.php cool
+				echo `date` - Switched to cool mode >> /var/log/nestmode.log
+			elif [ "$ext_temp_int" -lt "16" ]; then
+				nest-setmode.php heat
+				echo `date` - Switched to heat mode >> /var/log/nestmode.log
+			else
+				nest-setmode.php range
+				echo `date` - Switched to range mode >> /var/log/nestmode.log
+			fi
+		fi
+	fi
+	;;
+  * )	exit 1;;
+
+esac

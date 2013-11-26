@@ -1,0 +1,9 @@
+#!/usr/bin/php
+<?php
+include 'nest-config.php';
+
+//$infos = $nest->getDeviceInfo();
+$infoLoc = $nest->getUserLocations();
+
+printf("%.00f\n", $infoLoc[0]->outside_temperature,0);
+?>

@@ -1,0 +1,99 @@
+#!/bin/bash
+statusini='/tmp/hvac-status.ini'
+hrvtriggertemp=22
+
+if [ -e "$statusini" ]; then
+	if [ $(( (`date +%s` - `stat -L --format %Y $statusini`) > (15*60) )) -eq 0 ]; then
+		. $statusini
+	else
+		echo HVAC Status INI out of date.
+		exit 255
+	fi
+else
+	echo HVAC Status INI not found.
+	exit 255
+fi
+
+function hrvon() {
+	#remove existing jobs first
+	for i in `atq | awk '{print $1}'`;do atrm $i;done
+#disconnect manual control panel
+	ssrelay -r1 -s1
+	ssrelay -r2 -s1
+#turn on HRV
+	ssrelay -r0 -s1
+}
+
+function hrvoff() {
+	for i in `atq | awk '{print $1}'`;do atrm $i;done
+	ssrelay -r2 -s1
+	ssrelay -r1 -s1
+	ssrelay -r0 -s0
+}
+
+function hrvauto() {
+	if [ "$away" != "1" ]; then
+#		/usr/local/bin/nest-fan30m.php
+		if [ $(atq | wc -l) -eq 0 ]; then
+			if (( $(bc <<< "$current_temp >= $ext_temp") == 1)); then
+				if (( $(bc <<< "$ext_temp <= $hrvtriggertemp") == 1)); then
+					hrvon
+					echo '/usr/local/bin/hrvmode off' | at now + 20 min
+				fi
+			fi
+		fi
+	fi
+}
+
+case $1 in
+  on )          hrvon;;
+  off )         hrvoff;;
+  [0-9]* )      if [ "$(echo $1 | sed 's/[^0-9]//g')" == "$1" ]; then
+                        echo run for $1 minutes
+			hrvon
+			echo '/usr/local/bin/hrvmode off' | at now + $1 min
+                else
+                        echo Error
+                fi
+                ;;
+  auto )
+		#disable control panel
+		ssrelay -r1 -s1
+		ssrelay -r2 -s1
+		hrvauto
+		#hourly timed activation
+#		if [ $(date +%M) -lt 5 ]; then
+#			if [ "$away" != 1 ]; then
+#				hrvauto
+#			fi
+#		else
+#		#NEST Fan activated
+#			if [ "$current_active" != "I" ]; then
+#				hrvauto
+#			fi
+#		fi
+		;;
+  manual )	rm /etc/cron.d/hrv*
+		ssrelay --reset;;
+  status )
+		onuntil=$(atq | awk '{print $2 " " $3 " " $4 " " $5 " " $6}')
+		onoff=$(ssrelay -r0)
+		if [ -z "$onuntil" ]; then
+			echo $onoff
+		else
+			echo $onoff until $onuntil
+		fi
+		;;
+  inistatus )   onoff=$(ssrelay -r0)
+                if [ "$onoff" == "Off" ]; then
+                        if (( $(bc <<< "$ext_temp <= $hrvtriggertemp") == 1)); then
+                                echo Idle
+                        else
+                                echo Off
+                        fi
+                else
+                        echo $onoff
+                fi
+                ;;
+  * )		exit 1;;
+esac
