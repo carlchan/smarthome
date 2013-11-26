@@ -1,4 +1,7 @@
 #!/bin/bash
+// Simple command to turn on and off power sockets on APC 7900 PDUs via SNMP
+// Usage: pdu PDU_IP PDU_PORT ON|OFF|STATUS
+
 ip=$1
 port=$2
 
